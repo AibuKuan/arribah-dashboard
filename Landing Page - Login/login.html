@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salon Business Dashboard - Login</title>
+
+    
+  <!-- Favicons -->
+  <link href="assets/img/LOGO1.png" rel="icon">
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+      
+        body {
+            background-image: url('assets/img/.jpg'); /* Replace with your image file name */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            height: 100vh; /* Ensures the background covers the full screen */
+            margin: 0; /* Removes default margin */
+            overflow: hidden; /* Disables scrolling */
+        }
+        body::after {
+         content: "";
+        position: absolute;
+         top: 0;
+        left: 0;
+        width: 100%;
+         height: 100%;
+        background-color: rgba(0, 0, 0, 0.5); /* Black overlay with 50% opacity */
+        z-index: -1; /* Ensures overlay is below content */
+}
+        .login-container {
+            max-width: 500px;
+            margin: 100px auto;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            margin-bottom: 100px;
+            margin-top: 13px;
+            background-color: rgba(255, 255, 255, 0.8); /* White with 80% opacity */
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 3); /* Optional: adds shadow for better visibility */
+
+            
+        }
+        .login-title {
+            font-size: 30px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            color: black;
+        }
+        .login-btn {
+            background-color: #ffc451;
+            border-color: #ffc451;
+        }
+        .login-btn:hover {
+            background-color: orange;
+            border-color: orange;
+        }
+        .login-footer {
+            text-align: center;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="login-container">
+            <h1 class="text-center login-title">ARRIBAH SALON!</h1>
+            <!-- Insert logo here -->
+        <div class="text-center">
+            <img src="assets/img/LOGO1.png" alt="Salon Business Logo" class="login-logo">
+        </div>
+            <form>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email address</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+                        <input type="email" class="form-control" id="email" placeholder="Enter your email" required>
+                    </div>
+                </div>
+
+                  <!-- Password Input -->
+                  <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                        <input type="password" class="form-control" id="password" placeholder="Enter your password" required>
+                    </div>
+                </div>
+                <!-- Keep me signed in -->
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="keepSignedIn">
+                    <label class="form-check-label" for="keepSignedIn">Keep me signed in</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 login-btn mb-3">Login</button>
+            </form>
+           
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
