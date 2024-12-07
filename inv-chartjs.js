@@ -262,7 +262,7 @@ function calcStockMovement() {
     
         if (!acc[date]) acc[date] = {...currentStocks};
     
-        if (item['TRANSACTION TYPE'] == 'sold') {
+        if (item['TRANSACTION TYPE'] === 'sold') {
             acc[date][category] = (acc[date][category] || 0) - item['QUANTITY'];
         } else {
             acc[date][category] = (acc[date][category] || 0) + item['QUANTITY'];
@@ -274,35 +274,38 @@ function calcStockMovement() {
         return acc;
     }, {});
 
-    // Step 2: Reorganize categories into top 5 + "others" for every date
+    // Step 2: Identify the Top 5 Categories Based on the Last Day
+    let lastDate = Object.keys(groupedData).sort().slice(-1)[0];
+    let lastDayData = Object.entries(groupedData[lastDate]);
+
+    // Sort categories by stock count (descending) on the last day
+    lastDayData.sort(([, stockA], [, stockB]) => stockB - stockA);
+
+    // Extract the top 5 categories
+    let topCategories = lastDayData.slice(0, 5).map(([category]) => category);
+
+    // Step 3: Reorganize categories into top 5 + "Others" for every date
     Object.keys(groupedData).forEach(date => {
         let categories = Object.entries(groupedData[date]);
-
-        // Sort categories by stock count (descending)
-        categories.sort(([, stockA], [, stockB]) => stockB - stockA);
-
-        // Keep top 5, sum the rest into "others"
-        let top5 = categories.slice(0, 5);
-        let others = categories.slice(5);
         let aggregated = {};
 
-        top5.forEach(([category, stock]) => {
-            aggregated[category] = stock;
+        categories.forEach(([category, stock]) => {
+            if (topCategories.includes(category)) {
+                aggregated[category] = stock;
+            } else {
+                aggregated["Others"] = (aggregated["Others"] || 0) + stock;
+            }
         });
-
-        if (others.length > 0) {
-            aggregated["Others"] = others.reduce((sum, [, stock]) => sum + stock, 0);
-        }
 
         groupedData[date] = aggregated;
     });
 
-    console.log('grouped data with others:', groupedData);
-    
-    // Step 3: Get sorted unique dates
+    console.log('Grouped data with top 5 and others:', groupedData);
+
+    // Step 4: Get sorted unique dates
     let uniqueDates = Object.keys(groupedData).sort();
-    
-    // Step 4: Collapse dates into ranges if they exceed 10
+
+    // Step 5: Collapse dates into ranges if they exceed 10
     function collapseDatesAndAggregate(dates, data, maxCount) {
         if (dates.length <= maxCount) return { dates, aggregatedData: data };
     
@@ -318,16 +321,13 @@ function calcStockMovement() {
     
         return { dates: collapsedDates, aggregatedData };
     }
-    
+
     let { dates: limitedDates, aggregatedData } = collapseDatesAndAggregate(uniqueDates, groupedData, 10);
-    
-    // Step 5: Prepare data for Chart.js
-    let categories = [...new Set(Object.values(groupedData).flatMap(dateData => Object.keys(dateData)))];
 
-    // Define your custom color palette
+    // Step 6: Prepare data for Chart.js
     const colorPalette = ['#fbb304', '#d6bc48', '#b1bd62', '#83be81', '#5ebf9b', '#22c1c3'];
+    let categories = [...topCategories, "Others"];
 
-    // Prepare the datasets using the color palette
     let datasets = categories.map((category, index) => ({
         label: category,
         data: limitedDates.map(date => aggregatedData[date][category] || 0),
@@ -338,7 +338,6 @@ function calcStockMovement() {
         pointBackgroundColor: colorPalette[index % colorPalette.length],
         pointRadius: 3,
     }));
-    
 
     // Debugging: Log datasets and labels to verify alignment
     console.log("Labels:", limitedDates);
@@ -347,7 +346,6 @@ function calcStockMovement() {
 
     chartStockMovement = generateLineChart('chart-stock-movement', limitedDates, datasets);
 }
-
 
 
 
@@ -632,10 +630,11 @@ FilePond.create(document.querySelector('.imgbb-filepond'), {
                 const pricesData = XLSX.utils.sheet_to_json(pricesSheet);
                 const inventoryData = XLSX.utils.sheet_to_json(inventorySheet);
 
-                // Process the data to convert the DATE column
+                // Process the data to convert the DATEcolumn
                 const processedSalesData = salesData.map(row => {
                     if (row['DATE']) {
-                        // If the DATE is a serial number (check if it's a number)
+                        console.log('row exist', row['DATE']);
+                        // If the DATEis a serial number (check if it's a number)
                         if (typeof row['DATE'] === 'number') {
                             row['DATE'] = excelDateToJSDate(row['DATE']);
                         } else if (typeof row['DATE'] === 'string' && !isNaN(Date.parse(row['DATE']))) {
@@ -652,8 +651,8 @@ FilePond.create(document.querySelector('.imgbb-filepond'), {
                 // Combine data by matching 'Product Name' and 'Product Category'
                 pricesData.forEach(priceRow => {
                     const matchingInventoryRow = inventoryData.find(inventoryRow => 
-                        inventoryRow['Product Name'] === priceRow['Product Name'] &&
-                        inventoryRow['Product Category'] === priceRow['Product Category']
+                        inventoryRow['Product Name'] === priceRow['Product Name']
+                        // inventoryRow['Product Category'] === priceRow['Product Category']
                     );
 
                     if (matchingInventoryRow) {
