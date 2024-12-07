@@ -633,7 +633,6 @@ FilePond.create(document.querySelector('.imgbb-filepond'), {
                 // Process the data to convert the DATEcolumn
                 const processedSalesData = salesData.map(row => {
                     if (row['DATE']) {
-                        console.log('row exist', row['DATE']);
                         // If the DATEis a serial number (check if it's a number)
                         if (typeof row['DATE'] === 'number') {
                             row['DATE'] = excelDateToJSDate(row['DATE']);
