@@ -123,6 +123,7 @@ function updateCharts() {
     }
 
     combinedData = JSON.parse(localStorage.getItem('combinedData'));
+    salesData = JSON.parse(localStorage.getItem('salesData'));
     
     calcTotalVal();
     calculateProductType();
