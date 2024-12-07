@@ -425,9 +425,42 @@
 // var lineChart2 = new Chart(ctx2, config2);
 // var lineChart3 = new Chart(ctx3, config3);
 // var lineChart4 = new Chart(ctx4, config4);
-const combinedData = JSON.parse(localStorage.getItem('combinedData'));
-calcTotalVal();
-calcInventoryValue()
+let combinedData = JSON.parse(localStorage.getItem('combinedData'));
+if (combinedData) {
+    updateCharts();
+} else {
+    console.log('no combinedData')
+    generatePieChart('stockTypes', [
+            'Shampoo', 
+            'Conditioner', 
+            'Hair Oil', 
+            'Hair Color', 
+            'Styling Gel', 
+            'Others'
+        ],
+        [25, 20, 15, 10, 10, 20]
+    );
+
+    generateBarChart('graph-inventory-value', [
+            'Shampoo', 
+            'Conditioner', 
+            'Hair Oil', 
+            'Hair Color', 
+            'Styling Gel', 
+            'Others'
+        ],
+        [250, 200, 150, 100, 100, 200],  // Example inventory values
+    );
+    
+}
+
+function updateCharts() {
+    combinedData = JSON.parse(localStorage.getItem('combinedData'));
+    calcTotalVal();
+    calculateProductType();
+    calcInventoryValue();
+}
+
 function calcTotalVal() {
     total = 0;
     combinedData.forEach(row => {
@@ -506,15 +539,7 @@ function calcInventoryValue() {
     generateBarChart('graph-inventory-value', categories, total);
 
 }
-// generatePieChart('stockTypes', [
-//     'Shampoo', 
-//     'Conditioner', 
-//     'Hair Oil', 
-//     'Hair Color', 
-//     'Styling Gel', 
-//     'Others'
-// ],[25, 20, 15, 10, 10, 20]
-// )
+
 
 function generatePieChart(id, labels, data) {
     new Chart(document.getElementById(id).getContext('2d'), {
@@ -559,17 +584,10 @@ function generateBarChart(id, labels, data) {
         type: 'bar',
         data: {
             labels: labels,
-            // [
-            //     'Shampoo', 
-            //     'Conditioner', 
-            //     'Hair Oil', 
-            //     'Hair Color', 
-            //     'Styling Gel', 
-            //     'Others'
-            // ],
+            
             datasets: [{
                 label: 'Inventory Value',
-                data: data, //[250, 200, 150, 100, 100, 200],  // Example inventory values
+                data: data,
                 backgroundColor: [
                     '#fbb304',
                     '#fbd204',
@@ -883,6 +901,8 @@ FilePond.create(document.querySelector('.imgbb-filepond'), {
 
                 localStorage.setItem('salesData', JSON.stringify(salesData));
                 localStorage.setItem('combinedData', JSON.stringify(combinedData));
+
+                updateCharts();
 
                 // Show a success toast and log data
                 Toastify({
