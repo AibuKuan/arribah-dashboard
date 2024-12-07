@@ -464,7 +464,7 @@ function updateCharts() {
 function calcTotalVal() {
     total = 0;
     combinedData.forEach(row => {
-        total += row.sellingPrice * row.remainingCount;
+        total += row['sellingPrice'] * row['remainingCount'];
     });
 
     document.querySelector('#total-value').textContent = total.toLocaleString();
@@ -473,18 +473,44 @@ function calcTotalVal() {
 }
 
 function calculateProductType() {
-    // console.log('saved data:', JSON.parse(localStorage.getItem('combinedData')));
-    // Step 1: Aggregate Remaining Count by Product Category
-    const categoryTotals = combinedData.reduce((acc, item) => {
-        if (!acc[item.productCategory]) {
-            acc[item.productCategory] = 0;
+    const productsTotal = combinedData.reduce((acc, item) => {
+        if (!acc[item['productCategory']]) {
+            acc[item['productCategory']] = 0;
         }
-        acc[item.productCategory] += item.remainingCount;
+        acc[item['productCategory']] += item['remainingCount'];
         return acc;
     }, {});
 
+    const data = sortData(productsTotal);
+    generatePieChart('stockTypes', data['categories'], data['values']);
+}
+
+function calcInventoryValue() {
+    const inventoriesValue = combinedData.reduce((acc, item) => {
+        if (!acc[item.productCategory]) {
+            acc[item.productCategory] = 0;
+        }
+        acc[item.productCategory] += item.remainingCount * item.sellingPrice;
+        return acc;
+    }, {});
+
+    const data = sortData(inventoriesValue);
+    generateBarChart('graph-inventory-value', data['categories'], data['values']);
+
+}
+
+function sortData(jsonData) {
+    // Step 1: Aggregate Remaining Count by Product Category
+    // const categoryTotals = combinedData.reduce((acc, item) => {
+    //     if (!acc[item[category]]) {
+    //         acc[item[category]] = 0;
+    //     }
+    //     acc[item[category]] += item[value];
+    //     return acc;
+    // }, {});
+
     // Step 2: Sort Categories by Remaining Count
-    const sortedCategories = Object.entries(categoryTotals)
+    const sortedCategories = Object.entries(jsonData)
         .sort((a, b) => b[1] - a[1]) // Sort descending by remaining count
         .map(([category, count]) => ({ category, count }));
 
@@ -501,43 +527,10 @@ function calculateProductType() {
     const categories = top5Categories.map(item => item.category); // Array of category names
     const counts = top5Categories.map(item => item.count); // Array of corresponding counts
 
-    // Output the arrays
-    console.log('Categories:', categories);
-    console.log('Counts:', counts);
-    console.log('Top 5 category', top5Categories);
-
-    generatePieChart('stockTypes', categories, counts)
-}
-
-function calcInventoryValue() {
-    const categoryTotals = combinedData.reduce((acc, item) => {
-        if (!acc[item.productCategory]) {
-            acc[item.productCategory] = 0;
-        }
-        acc[item.productCategory] += item.remainingCount * item.sellingPrice;
-        return acc;
-    }, {});
-
-    // Step 2: Sort Categories by Remaining Count
-    const sortedCategories = Object.entries(categoryTotals)
-        .sort((a, b) => b[1] - a[1]) // Sort descending by remaining count
-        .map(([category, count]) => ({ category, count }));
-
-    // Step 3: Determine Top 5 Categories and Group the Rest as "Others"
-    const top5Categories = sortedCategories.slice(0, 5); // Get the top 5
-    const othersTotal = sortedCategories.slice(5).reduce((sum, item) => sum + item.count, 0); // Sum the rest
-
-    // Add "Others" to the list
-    if (othersTotal > 0) {
-        top5Categories.push({ category: 'Others', count: othersTotal });
-    }
-
-    // Step 4: Separate into Two Arrays
-    const categories = top5Categories.map(item => item.category); // Array of category names
-    const total = top5Categories.map(item => item.count); // Array of corresponding counts
-
-    generateBarChart('graph-inventory-value', categories, total);
-
+    return {
+        'categories': categories,
+        'values': counts
+    };
 }
 
 
@@ -604,7 +597,8 @@ function generateBarChart(id, labels, data) {
                 yAxes: [{
                     ticks: {
                         beginAtZero: true,   // Ensures the y-axis starts at zero
-                        stepSize: 50000,        // Set the interval between ticks (every 50 units)
+                        // stepSize: 50000,        // Set the interval between ticks (every 50 units)
+                        maxTicksLimit: 5,
                     } 
                 }],
                 xAxes: [{
