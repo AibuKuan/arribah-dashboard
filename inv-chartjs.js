@@ -541,7 +541,7 @@ function generateLineChart(id, labels, datasets) {
 
 
 
-let dataTable = new simpleDatatables.DataTable(document.querySelector('#productTable'));
+// let dataTable = new simpleDatatables.DataTable(document.querySelector('#productTable'));
 
 
 
