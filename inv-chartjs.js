@@ -425,104 +425,196 @@
 // var lineChart2 = new Chart(ctx2, config2);
 // var lineChart3 = new Chart(ctx3, config3);
 // var lineChart4 = new Chart(ctx4, config4);
+const combinedData = JSON.parse(localStorage.getItem('combinedData'));
+calcTotalVal();
+calcInventoryValue()
+function calcTotalVal() {
+    total = 0;
+    combinedData.forEach(row => {
+        total += row.sellingPrice * row.remainingCount;
+    });
 
-new Chart(document.getElementById('stockTypes').getContext('2d'), {
-    type: 'pie',
-    data: {
-        labels: [
-            'Shampoo', 
-            'Conditioner', 
-            'Hair Oil', 
-            'Hair Color', 
-            'Styling Gel', 
-            'Others'
-        ],
-        datasets: [{
-            data: [25, 20, 15, 10, 10, 20], // Example data for salon products
-            backgroundColor: [
-                '#fbb304',
-                '#fbd204',
-                '#fbdf04',
-                '#fbef04',
-                '#fbf404',
-                '#fbfb04'
-            ]
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: {
-            legend: {
-                position: 'top', // Options: 'top', 'left', 'right', 'bottom'
-            },
-            tooltip: {
-                callbacks: {
-                    label: function (tooltipItem) {
-                        const data = tooltipItem.dataset.data[tooltipItem.dataIndex];
-                        return `${tooltipItem.label}: ${data}%`;
-                    }
-                }
-            }
+    document.querySelector('#total-value').textContent = total.toLocaleString();
+
+    console.log('total val:', total);
+}
+
+function calculateProductType() {
+    // console.log('saved data:', JSON.parse(localStorage.getItem('combinedData')));
+    // Step 1: Aggregate Remaining Count by Product Category
+    const categoryTotals = combinedData.reduce((acc, item) => {
+        if (!acc[item.productCategory]) {
+            acc[item.productCategory] = 0;
         }
+        acc[item.productCategory] += item.remainingCount;
+        return acc;
+    }, {});
+
+    // Step 2: Sort Categories by Remaining Count
+    const sortedCategories = Object.entries(categoryTotals)
+        .sort((a, b) => b[1] - a[1]) // Sort descending by remaining count
+        .map(([category, count]) => ({ category, count }));
+
+    // Step 3: Determine Top 5 Categories and Group the Rest as "Others"
+    const top5Categories = sortedCategories.slice(0, 5); // Get the top 5
+    const othersTotal = sortedCategories.slice(5).reduce((sum, item) => sum + item.count, 0); // Sum the rest
+
+    // Add "Others" to the list
+    if (othersTotal > 0) {
+        top5Categories.push({ category: 'Others', count: othersTotal });
     }
-});
 
+    // Step 4: Separate into Two Arrays
+    const categories = top5Categories.map(item => item.category); // Array of category names
+    const counts = top5Categories.map(item => item.count); // Array of corresponding counts
 
+    // Output the arrays
+    console.log('Categories:', categories);
+    console.log('Counts:', counts);
+    console.log('Top 5 category', top5Categories);
 
-new Chart(document.getElementById('graph-inventory-value').getContext('2d'), {
-    type: 'bar',
-    data: {
-        labels: [
-            'Shampoo', 
-            'Conditioner', 
-            'Hair Oil', 
-            'Hair Color', 
-            'Styling Gel', 
-            'Others'
-        ],
-        datasets: [{
-            label: 'Inventory Value',
-            data: [250, 200, 150, 100, 100, 200],  // Example inventory values
-            backgroundColor: [
-                '#fbb304',
-                '#fbd204',
-                '#fbdf04',
-                '#fbef04',
-                '#fbf404',
-                '#fbfb04'
-            ],
-        }]
-    },
-    options: {
-        responsive: true,
-        scales: {
-            yAxes: [{
-                ticks: {
-                    beginAtZero: true,   // Ensures the y-axis starts at zero
-                    stepSize: 50,        // Set the interval between ticks (every 50 units)
-                } 
-            }],
-            xAxes: [{
-                gridLines: {
-                    display: false,
-                }
+    generatePieChart('stockTypes', categories, counts)
+}
+
+function calcInventoryValue() {
+    const categoryTotals = combinedData.reduce((acc, item) => {
+        if (!acc[item.productCategory]) {
+            acc[item.productCategory] = 0;
+        }
+        acc[item.productCategory] += item.remainingCount * item.sellingPrice;
+        return acc;
+    }, {});
+
+    // Step 2: Sort Categories by Remaining Count
+    const sortedCategories = Object.entries(categoryTotals)
+        .sort((a, b) => b[1] - a[1]) // Sort descending by remaining count
+        .map(([category, count]) => ({ category, count }));
+
+    // Step 3: Determine Top 5 Categories and Group the Rest as "Others"
+    const top5Categories = sortedCategories.slice(0, 5); // Get the top 5
+    const othersTotal = sortedCategories.slice(5).reduce((sum, item) => sum + item.count, 0); // Sum the rest
+
+    // Add "Others" to the list
+    if (othersTotal > 0) {
+        top5Categories.push({ category: 'Others', count: othersTotal });
+    }
+
+    // Step 4: Separate into Two Arrays
+    const categories = top5Categories.map(item => item.category); // Array of category names
+    const total = top5Categories.map(item => item.count); // Array of corresponding counts
+
+    generateBarChart('graph-inventory-value', categories, total);
+
+}
+// generatePieChart('stockTypes', [
+//     'Shampoo', 
+//     'Conditioner', 
+//     'Hair Oil', 
+//     'Hair Color', 
+//     'Styling Gel', 
+//     'Others'
+// ],[25, 20, 15, 10, 10, 20]
+// )
+
+function generatePieChart(id, labels, data) {
+    new Chart(document.getElementById(id).getContext('2d'), {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: [
+                    '#fbb304',
+                    '#fbd204',
+                    '#fbdf04',
+                    '#fbef04',
+                    '#fbf404',
+                    '#fbfb04'
+                ]
             }]
         },
-        legend: {
-            display: false,
-        },
-        plugins: {
-            tooltip: {
-                callbacks: {
-                    label: function(tooltipItem, data) {
-                        const value = tooltipItem.yLabel; // Display actual value
-                        return `${tooltipItem.label}: $${value}`;
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top', // Options: 'top', 'left', 'right', 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (tooltipItem) {
+                            const data = tooltipItem.dataset.data[tooltipItem.dataIndex];
+                            return `${tooltipItem.label}: ${data}%`;
+                        }
                     }
                 }
             }
         }
-    }
-});
+    });
+}
+
+
+
+function generateBarChart(id, labels, data) {
+    new Chart(document.getElementById(id).getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            // [
+            //     'Shampoo', 
+            //     'Conditioner', 
+            //     'Hair Oil', 
+            //     'Hair Color', 
+            //     'Styling Gel', 
+            //     'Others'
+            // ],
+            datasets: [{
+                label: 'Inventory Value',
+                data: data, //[250, 200, 150, 100, 100, 200],  // Example inventory values
+                backgroundColor: [
+                    '#fbb304',
+                    '#fbd204',
+                    '#fbdf04',
+                    '#fbef04',
+                    '#fbf404',
+                    '#fbfb04'
+                ],
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,   // Ensures the y-axis starts at zero
+                        stepSize: 50000,        // Set the interval between ticks (every 50 units)
+                    } 
+                }],
+                xAxes: [{
+                    gridLines: {
+                        display: false,
+                    }
+                }]
+            },
+            legend: {
+                display: false,
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(tooltipItem, data) {
+                            const value = tooltipItem.yLabel; // Display actual value
+                            return `${tooltipItem.label}: $${value}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+
+
+
 
 
 
@@ -672,3 +764,157 @@ new Chart(document.getElementById('chart-stock-movement').getContext('2d'), {
 
 
 let dataTable = new simpleDatatables.DataTable(document.querySelector('#productTable'));
+
+
+
+// Filepond: ImgBB with server property
+// FilePond.create( document.querySelector('.imgbb-filepond'), { 
+//     allowImagePreview: false, 
+//     server: {
+//         process: (fieldName, file, metadata, load, error, progress, abort) => {
+//             // We ignore the metadata property and only send the file
+
+//             const formData = new FormData();
+//             formData.append(fieldName, file, file.name);
+
+//             const request = new XMLHttpRequest();
+//             // you can change it by your client api key
+//             request.open('POST', 'https://api.imgbb.com/1/upload?key=762894e2014f83c023b233b2f10395e2');
+
+//             request.upload.onprogress = (e) => {
+//                 progress(e.lengthComputable, e.loaded, e.total);
+//             };
+
+//             request.onload = function() {
+//                 if (request.status >= 200 && request.status < 300) {
+//                     load(request.responseText);
+//                 }
+//                 else {
+//                     error('oh no');
+//                 }
+//             };
+
+//             request.onreadystatechange = function() {
+//                 if (this.readyState == 4) {
+//                     if(this.status == 200) {
+//                         let response = JSON.parse(this.responseText);
+                        
+//                         Toastify({
+//                             text: "Success uploading to imgbb! see console f12",
+//                             duration: 3000,
+//                             close:true,
+//                             gravity:"bottom",
+//                             position: "right",
+//                             backgroundColor: "#4fbe87",
+//                         }).showToast();
+            
+//                         console.log(response);
+//                     } else {
+//                         Toastify({
+//                             text: "Failed uploading to imgbb! see console f12",
+//                             duration: 3000,
+//                             close:true,
+//                             gravity:"bottom",
+//                             position: "right",
+//                             backgroundColor: "#ff0000",
+//                         }).showToast();   
+
+//                         console.log("Error", this.statusText);
+//                     }
+//                 }
+//             };
+
+//             request.send(formData);
+//         }
+//     }
+// });
+
+
+FilePond.create(document.querySelector('.imgbb-filepond'), { 
+    allowImagePreview: false, 
+    server: {
+        process: (fieldName, file, metadata, load, error, progress, abort) => {
+            // Read the file locally using FileReader
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+                const fileContent = event.target.result;
+
+                // Use a library like XLSX to parse Excel content
+                const workbook = XLSX.read(fileContent, { type: 'binary' });
+                
+                // Example: Reading the first sheet
+                const pricesSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const salesSheet = workbook.Sheets[workbook.SheetNames[1]];
+                const inventorySheet = workbook.Sheets[workbook.SheetNames[2]];
+
+                // Convert sheets to JSON for easier processing
+                const salesData = XLSX.utils.sheet_to_json(salesSheet);
+                const pricesData = XLSX.utils.sheet_to_json(pricesSheet);
+                const inventoryData = XLSX.utils.sheet_to_json(inventorySheet);
+
+                // Prepare the combined data array
+                const combinedData = [];
+
+                // Combine data by matching 'Product Name' and 'Product Category'
+                pricesData.forEach(priceRow => {
+                    const matchingInventoryRow = inventoryData.find(inventoryRow => 
+                        inventoryRow['Product Name'] === priceRow['Product Name'] &&
+                        inventoryRow['Product Category'] === priceRow['Product Category']
+                    );
+
+                    if (matchingInventoryRow) {
+                        combinedData.push({
+                            productName: priceRow['Product Name'], 
+                            productCategory: priceRow['Product Category'],
+                            purchasePrice: priceRow['Purchase Price'],
+                            sellingPrice: priceRow['Selling Price'],
+                            startingCount: matchingInventoryRow['Starting Count'],
+                            in: matchingInventoryRow['IN'],
+                            out: matchingInventoryRow['OUT'],
+                            remainingCount: matchingInventoryRow['Remaining Count'],
+                            variance: matchingInventoryRow['Variance']
+                        });
+                    }
+                });
+
+                // Output the JSON data
+                console.log('Combined Data as JSON:', combinedData);
+
+                localStorage.setItem('salesData', JSON.stringify(salesData));
+                localStorage.setItem('combinedData', JSON.stringify(combinedData));
+
+                // Show a success toast and log data
+                Toastify({
+                    text: "File successfully read!",
+                    duration: 3000,
+                    close: true,
+                    gravity: "bottom",
+                    position: "right",
+                    backgroundColor: "#4fbe87",
+                }).showToast();
+
+                console.log('Excel Data:', salesData);
+                load('File read successfully'); // Signal completion to FilePond
+                
+                calculateProductType();
+            };
+
+            reader.onerror = function() {
+                Toastify({
+                    text: "Error reading file!",
+                    duration: 3000,
+                    close: true,
+                    gravity: "bottom",
+                    position: "right",
+                    backgroundColor: "#ff0000",
+                }).showToast();
+
+                error('Failed to read file');
+            };
+
+            // Read the file as binary for XLSX
+            reader.readAsBinaryString(file);
+        }
+    }
+});

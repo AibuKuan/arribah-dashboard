@@ -16,6 +16,10 @@
 
     <link rel="stylesheet" href="assets/vendors/simple-datatables/style.css">
 
+    <link rel="stylesheet" href="assets/vendors/toastify/toastify.css">
+    <link href="https://unpkg.com/filepond/dist/filepond.css" rel="stylesheet">
+    <link href="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css" rel="stylesheet">
+
     <link rel="stylesheet" href="assets/vendors/perfect-scrollbar/perfect-scrollbar.css">
     <link rel="stylesheet" href="assets/vendors/bootstrap-icons/bootstrap-icons.css">
     <link rel="stylesheet" href="assets/css/app.css">
@@ -89,6 +93,26 @@
                                     <div class="row">
                                         <div class="col-12">
                                             <div class="card">
+                                                <div class="card-header">
+                                                    <h5 class="card-title">Excel Uploader</h5>
+                                                </div>
+                                                <div class="card-content">
+                                                    <div class="card-body">
+                                                        <p class="card-text">
+                                                            Upload the excel for current month to override the charts.
+                                                        </p>
+                                                        <!-- imgBB file uploader -->
+                                                        <input type="file" name="image" class="imgbb-filepond">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+
+
+
+                                        <div class="col-12">
+                                            <div class="card">
                                                 <div class="card-body px-3 py-4-5">
                                                     <div class="row">
                                                         <div class="col-md-4 text-center text-md-end">
@@ -96,7 +120,7 @@
                                                         </div>
                                                         <div class="col-md-8 text-center text-md-start">
                                                             <h6 class="text-muted font-semibold">Total Inventory Value</h6>
-                                                            <h6 class="font-extrabold mb-0 fs-1 text" style="color: #fbdf04;">112.000</h6>
+                                                            <h6 id="total-value" class="font-extrabold mb-0 fs-1 text" style="color: #fbdf04;">112.000</h6>
                                                         </div>
                                                         
                                                     </div>
@@ -271,6 +295,18 @@
     <script src="assets/vendors/simple-datatables/simple-datatables.js"></script>
 
     <script src=" https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js "></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+    <!-- filepond validation -->
+    <script src="https://unpkg.com/filepond-plugin-file-validate-size/dist/filepond-plugin-file-validate-size.js"></script>
+    <script src="https://unpkg.com/filepond-plugin-file-validate-type/dist/filepond-plugin-file-validate-type.js"></script>
+
+    <!-- toastify -->
+    <script src="assets/vendors/toastify/toastify.js"></script>
+
+    <!-- filepond -->
+    <script src="https://unpkg.com/filepond/dist/filepond.js"></script>
 
     <script src="assets/vendors/chartjs/Chart.min.js"></script>
     <script src="inv-chartjs.js"></script>
