@@ -2,12 +2,17 @@ let combinedData = JSON.parse(localStorage.getItem('combinedData'));
 let salesData = JSON.parse(localStorage.getItem('salesData'));
 let initialStocks = {};
 
+let stockTypesChart;
+let graphInventoryValue; 
+let graphStockOverview;
+let chartStockMovement;
+
 if (combinedData && salesData) {
     console.log(combinedData);
     console.log(salesData);
     updateCharts();
 } else {
-    generatePieChart('stockTypes', [
+    stockTypesChart = generatePieChart('stockTypes', [
             'Shampoo', 
             'Conditioner', 
             'Hair Oil', 
@@ -18,7 +23,7 @@ if (combinedData && salesData) {
         [25, 20, 15, 10, 10, 20]
     );
 
-    generateBarChart('graph-inventory-value', [
+    graphInventoryValue = generateBarChart('graph-inventory-value', [
             'Shampoo', 
             'Conditioner', 
             'Hair Oil', 
@@ -29,7 +34,7 @@ if (combinedData && salesData) {
         [250, 200, 150, 100, 100, 200],  // Example inventory values
     );
     
-    generateStackBarChart('graph-stock-overview', [
+    graphStockOverview = generateStackBarChart('graph-stock-overview', [
             'Shampoo', 
             'Conditioner', 
             'Hair Oil', 
@@ -41,7 +46,7 @@ if (combinedData && salesData) {
         [25, 20, 15, 10, 10, 20]
     );
 
-    generateLineChart('chart-stock-movement', 
+    chartStockMovement = generateLineChart('chart-stock-movement', 
         [
             "2023-01-01", "2023-02-14", "2023-03-22", "2023-04-30", "2023-06-15",
             "2023-07-20", "2023-08-12", "2023-09-18", "2023-10-05", "2023-11-10"
@@ -110,11 +115,20 @@ if (combinedData && salesData) {
 }
 
 function updateCharts() {
+    if (stockTypesChart && graphInventoryValue && graphStockOverview && chartStockMovement) {
+        stockTypesChart.destroy()
+        graphInventoryValue.destroy()
+        graphStockOverview.destroy()
+        chartStockMovement.destroy()
+    }
+
     combinedData = JSON.parse(localStorage.getItem('combinedData'));
+    
     calcTotalVal();
     calculateProductType();
     calcInventoryValue();
     calcStockOverview();
+    calcStockMovement();
 }
 
 function calcTotalVal() {
@@ -136,7 +150,7 @@ function calculateProductType() {
     }, {});
 
     const data = sortData(productsTotal);
-    generatePieChart('stockTypes', data['categories'], data['values']);
+    stockTypesChart = generatePieChart('stockTypes', data['categories'], data['values']);
 }
 
 function calcInventoryValue() {
@@ -149,7 +163,7 @@ function calcInventoryValue() {
     }, {});
 
     const data = sortData(inventoriesValue);
-    generateBarChart('graph-inventory-value', data['categories'], data['values']);
+    graphInventoryValue = generateBarChart('graph-inventory-value', data['categories'], data['values']);
 
 }
 
@@ -200,7 +214,7 @@ function calcStockOverview() {
     const soldCounts = finalInventory.map(item => item.soldCount);
     const remainingCounts = finalInventory.map(item => item.remainingCount);
 
-    generateStackBarChart('graph-stock-overview', productCategories, remainingCounts, soldCounts);
+    graphStockOverview = generateStackBarChart('graph-stock-overview', productCategories, remainingCounts, soldCounts);
 }
 
 function sortData(jsonData) {
@@ -236,78 +250,7 @@ function sortData(jsonData) {
         'values': counts
     };
 }
-calcStockMovement();
-// function calcStockMovement() {
-//     let currentStocks = initialStocks;
-//     // Step 1: Group sales by date and category
-//     let groupedData = salesData.reduce((acc, item) => {
-//         let date = item.DATE.split("T")[0]; // Extract date only
-//         let category = item["PRODUCT CATEGORY"];
-    
-//         if (!acc[date]) acc[date] = {...currentStocks};
-    
-//         if (item['TRANSACTION TYPE'] == 'sold') {
-//             acc[date][category] -= item['QUANTITY'];
-//         } else {
-//             acc[date][category] += item['QUANTITY'];
-//         }
 
-//         currentStocks = acc[date];
-
-//         return acc;
-//     }, {});
-//     console.log('grouped data:', groupedData);
-    
-//     // Step 2: Get sorted unique dates
-//     let uniqueDates = Object.keys(groupedData).sort();
-    
-//     // Step 3: Collapse dates into ranges if they exceed 10
-//     function collapseDatesAndAggregate(dates, data, maxCount) {
-//         if (dates.length <= maxCount) return { dates, aggregatedData: data };
-    
-//         let interval = Math.ceil(dates.length / maxCount);
-//         let collapsedDates = [];
-//         let aggregatedData = {};
-    
-//         for (let i = 0; i < dates.length; i += interval) {
-//             // let start = dates[i];
-//             let end = dates[Math.min(i + interval - 1, dates.length - 1)];
-//             // let range = `${start} - ${end}`;
-//             collapsedDates.push(end);
-        
-//             aggregatedData[end] = data[end];
-//         }
-    
-//         return { dates: collapsedDates, aggregatedData };
-//     }
-    
-//     let { dates: limitedDates, aggregatedData } = collapseDatesAndAggregate(uniqueDates, groupedData, 10);
-    
-//     // Step 4: Prepare data for Chart.js
-//     let categories = [...new Set(salesData.map(item => item["PRODUCT CATEGORY"]))];
-//     let datasets = categories.map(category => ({
-//         label: category,
-//         data: limitedDates.map(date => aggregatedData[date][category]),
-//         borderColor: `#${Math.floor(Math.random() * 16777215).toString(16)}`, // Random color
-//         fill: false
-//     }));
-
-//     '#fbb304',
-//     '#fbd204',
-//     '#fbdf04',
-//     '#fbef04',
-//     '#fbf404',
-//     '#fbfb04'
-    
-//     // Debugging: Log datasets and labels to verify alignment
-//     console.log("Labels:", limitedDates);
-//     console.log("Datasets:", datasets);
-//     console.log('Aggregated data:', aggregatedData);
-
-//     generateLineChart('chart-stock-movement', limitedDates, datasets);
-// }
-
-calcStockMovement();
 function calcStockMovement() {
     let currentStocks = {...initialStocks};
 
@@ -401,14 +344,14 @@ function calcStockMovement() {
     console.log("Datasets:", datasets);
     console.log('Aggregated data with others:', aggregatedData);
 
-    generateLineChart('chart-stock-movement', limitedDates, datasets);
+    chartStockMovement = generateLineChart('chart-stock-movement', limitedDates, datasets);
 }
 
 
 
 
 function generatePieChart(id, labels, data) {
-    new Chart(document.getElementById(id).getContext('2d'), {
+    return new Chart(document.getElementById(id).getContext('2d'), {
         type: 'pie',
         data: {
             labels: labels,
@@ -444,7 +387,7 @@ function generatePieChart(id, labels, data) {
 }
 
 function generateBarChart(id, labels, data) {
-    new Chart(document.getElementById(id).getContext('2d'), {
+    return new Chart(document.getElementById(id).getContext('2d'), {
         type: 'bar',
         data: {
             labels: labels,
@@ -495,7 +438,7 @@ function generateBarChart(id, labels, data) {
 }
 
 function generateStackBarChart(id, labels, bottomData, topData) {
-    new Chart(document.getElementById(id).getContext('2d'), {
+    return new Chart(document.getElementById(id).getContext('2d'), {
         type: 'bar',
         data: {
             labels: labels,
@@ -551,7 +494,7 @@ function generateStackBarChart(id, labels, bottomData, topData) {
 }
 
 function generateLineChart(id, labels, datasets) {
-    new Chart(document.getElementById(id).getContext('2d'), {
+    return new Chart(document.getElementById(id).getContext('2d'), {
         type: 'line',
         data: {
             labels: labels,  // Time periods
@@ -745,7 +688,7 @@ FilePond.create(document.querySelector('.imgbb-filepond'), {
                     backgroundColor: "#4fbe87",
                 }).showToast();
 
-                console.log('Excel Data:', salesData);
+                console.log('Sales Data:', salesData);
                 load('File read successfully'); // Signal completion to FilePond
                 
                 calculateProductType();
