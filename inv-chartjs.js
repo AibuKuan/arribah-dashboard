@@ -2,7 +2,7 @@ let combinedData = JSON.parse(localStorage.getItem('combinedData'));
 let salesData = JSON.parse(localStorage.getItem('salesData'));
 let initialStocks = {};
 
-if (combinedData) {
+if (combinedData && salesData) {
     console.log(combinedData);
     console.log(salesData);
     updateCharts();
