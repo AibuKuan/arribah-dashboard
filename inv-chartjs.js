@@ -261,8 +261,9 @@ function calcStockMovement() {
         let category = item["PRODUCT CATEGORY"];
     
         if (!acc[date]) acc[date] = {...currentStocks};
+        console.log(acc[date]);
     
-        if (item['TRANSACTION TYPE'] === 'sold') {
+        if (item['TRANSACTION TYPE'] === 'SOLD') {
             acc[date][category] = (acc[date][category] || 0) - item['QUANTITY'];
         } else {
             acc[date][category] = (acc[date][category] || 0) + item['QUANTITY'];
