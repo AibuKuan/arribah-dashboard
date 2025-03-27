@@ -1,3 +1,11 @@
+let resetBtn = document.getElementById('reset');
+
+const SHEETS = {
+    PRICES: 'PRICES',
+    TRANSACTIONS: 'TRANSACTIONS',
+    INVENTORY: 'INVENTORY'
+}
+
 let combinedData = JSON.parse(localStorage.getItem('combinedData'));
 let salesData = JSON.parse(localStorage.getItem('salesData'));
 let initialStocks = {};
@@ -10,7 +18,7 @@ let chartStockMovement;
 if (combinedData && salesData) {
     console.log(combinedData);
     console.log(salesData);
-    updateCharts();
+    // updateCharts();
 } else {
     stockTypesChart = generatePieChart('stockTypes', [
             'Shampoo', 
@@ -114,22 +122,161 @@ if (combinedData && salesData) {
     );
 }
 
-function updateCharts() {
-    if (stockTypesChart && graphInventoryValue && graphStockOverview && chartStockMovement) {
-        stockTypesChart.destroy()
-        graphInventoryValue.destroy()
-        graphStockOverview.destroy()
-        chartStockMovement.destroy()
-    }
+resetBtn.addEventListener('click', () => {
+    console.log('clicked');
+    localStorage.clear();
+    combinedData = [];
+    salesData = [];
+    initialStocks = {};
+    destroyCharts([stockTypesChart, graphInventoryValue, graphStockOverview, chartStockMovement]);
+    // Reset how filepond looks
+    pond.addFile(null);
+    pond.setMetadata(null);
+    showSuccess('Data reset successfully!');
+});
 
-    combinedData = JSON.parse(localStorage.getItem('combinedData'));
-    salesData = JSON.parse(localStorage.getItem('salesData'));
+const pond = FilePond.create(document.querySelector('.imgbb-filepond'), { 
+    allowImagePreview: false, 
+    allowRevert: false,
+    server: {
+        process: (fieldName, file, metadata, load, error, progress, abort) => {
+            const readFile = (file) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+
+                    reader.onload = (event) => {
+                        resolve(event.target.result);
+                    };
+
+                    reader.onerror = (error) => {
+                        reject(error);
+                    };
+
+                    reader.readAsBinaryString(file);
+                });
+            }
+
+            const processFile = (fileContent) => {
+                const workbook = XLSX.read(fileContent, { type: 'binary' });
+
+                // Example: Reading the first sheet
+                const pricesSheet = workbook.Sheets[SHEETS.PRICES];
+                const salesSheet = workbook.Sheets[SHEETS.TRANSACTIONS];
+                const inventorySheet = workbook.Sheets[SHEETS.INVENTORY];
+
+                // Convert sheets to JSON for easier processing
+                const salesData = XLSX.utils.sheet_to_json(salesSheet);
+                const pricesData = XLSX.utils.sheet_to_json(pricesSheet);
+                const inventoryData = XLSX.utils.sheet_to_json(inventorySheet);
+
+                // Check if data is empty
+                if (salesData.length === 0) {
+                    error(); // Turn filepond into error state
+                    showError('No transactions found!'); // Show toast message
+                    return; // Stop processing
+                }
+                if (pricesData.length === 0) {
+                    error()
+                    showError('No prices found!');
+                    return;
+                }
+                if (inventoryData.length === 0) {
+                    error();
+                    showError('No inventory found!');
+                    return;
+                }
+
+                // Process the data to convert the DATE column
+                const processedSalesData = salesData.map(row => {
+                    if (row['DATE']) {
+                        // If the DATE is a serial number (check if it's a number)
+                        if (typeof row['DATE'] === 'number') {
+                            row['DATE'] = excelDateToJSDate(row['DATE']);
+                        } else if (typeof row['DATE'] === 'string' && !isNaN(Date.parse(row['DATE']))) {
+                            // If it's a string that can be parsed as a date, convert it
+                            row['DATE'] = new Date(row['DATE']);
+                        }
+                    } else {
+                        // If date is missing, show error
+                        error()
+                        showError('Date Column is missing or improper format!');
+                        return;
+                    }
+                    return row;
+                });
+
+                // Prepare the combined data array
+                const combinedData = [];
+
+                // Combine data by matching 'Product Name' and 'Product Category'
+                pricesData.forEach(priceRow => {
+                    const matchingInventoryRow = inventoryData.find(inventoryRow => 
+                        inventoryRow['Product Name'] === priceRow['Product Name']
+                        // inventoryRow['Product Category'] === priceRow['Product Category']
+                    );
+
+                    if (matchingInventoryRow) {
+                        combinedData.push({
+                            productName: priceRow['Product Name'], 
+                            productCategory: priceRow['Product Category'],
+                            purchasePrice: priceRow['Purchase Price'],
+                            sellingPrice: priceRow['Selling Price'],
+                            startingCount: matchingInventoryRow['Starting Count'],
+                            in: matchingInventoryRow['IN'],
+                            out: matchingInventoryRow['OUT'],
+                            remainingCount: matchingInventoryRow['Remaining Count'],
+                            variance: matchingInventoryRow['Variance']
+                        });
+                    }
+                });
+
+                // Output the JSON data
+                console.log('Combined Data as JSON:', combinedData);
+
+                localStorage.setItem('salesData', JSON.stringify(processedSalesData));
+                localStorage.setItem('combinedData', JSON.stringify(combinedData));
+
+                updateCharts()
+                .then(resolve => {
+                    showSuccess('Charts updated successfully!');
+                }, reject => {
+                    showError('Error updating charts!');
+                });
+
+                // Show a success toast and log data
+                showSuccess('File successfully read!');
+
+                console.log('Sales Data:', salesData);
+                load('File read successfully'); // Signal completion to FilePond
+                
+                calculateProductType();
+            }
+
+            readFile(file)
+            .then(fileContent => processFile(fileContent))
+            .catch(error => showError(error));
+        }
+    }
+});
+
+function updateCharts() {
+    return new Promise((resolve, reject) => {
+        destroyCharts([stockTypesChart, graphInventoryValue, graphStockOverview, chartStockMovement]);
     
-    calcTotalVal();
-    calculateProductType();
-    calcInventoryValue();
-    calcStockOverview();
-    calcStockMovement();
+        combinedData = JSON.parse(localStorage.getItem('combinedData'));
+        salesData = JSON.parse(localStorage.getItem('salesData'));
+        
+        try {
+            calcTotalVal();
+            calculateProductType();
+            calcInventoryValue();
+            calcStockOverview();
+            calcStockMovement();
+            resolve('Charts updated successfully!');
+        } catch (error) {
+            reject(error);
+        }
+    });
 }
 
 function calcTotalVal() {
@@ -218,39 +365,7 @@ function calcStockOverview() {
     graphStockOverview = generateStackBarChart('graph-stock-overview', productCategories, remainingCounts, soldCounts);
 }
 
-function sortData(jsonData) {
-    // Step 1: Aggregate Remaining Count by Product Category
-    // const categoryTotals = combinedData.reduce((acc, item) => {
-    //     if (!acc[item[category]]) {
-    //         acc[item[category]] = 0;
-    //     }
-    //     acc[item[category]] += item[value];
-    //     return acc;
-    // }, {});
 
-    // Step 2: Sort Categories by Remaining Count
-    const sortedCategories = Object.entries(jsonData)
-        .sort((a, b) => b[1] - a[1]) // Sort descending by remaining count
-        .map(([category, count]) => ({ category, count }));
-
-    // Step 3: Determine Top 5 Categories and Group the Rest as "Others"
-    const top5Categories = sortedCategories.slice(0, 5); // Get the top 5
-    const othersTotal = sortedCategories.slice(5).reduce((sum, item) => sum + item.count, 0); // Sum the rest
-
-    // Add "Others" to the list
-    if (othersTotal > 0) {
-        top5Categories.push({ category: 'Others', count: othersTotal });
-    }
-
-    // Step 4: Separate into Two Arrays
-    const categories = top5Categories.map(item => item.category); // Array of category names
-    const counts = top5Categories.map(item => item.count); // Array of corresponding counts
-
-    return {
-        'categories': categories,
-        'values': counts
-    };
-}
 
 function calcStockMovement() {
     let currentStocks = {...initialStocks};
@@ -346,375 +461,4 @@ function calcStockMovement() {
     console.log('Aggregated data with others:', aggregatedData);
 
     chartStockMovement = generateLineChart('chart-stock-movement', limitedDates, datasets);
-}
-
-
-
-function generatePieChart(id, labels, data) {
-    return new Chart(document.getElementById(id).getContext('2d'), {
-        type: 'pie',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                backgroundColor: [
-                    '#fbb304',
-                    '#fbd204',
-                    '#fbdf04',
-                    '#fbef04',
-                    '#fbf404',
-                    '#fbfb04'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top', // Options: 'top', 'left', 'right', 'bottom'
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function (tooltipItem) {
-                            const data = tooltipItem.dataset.data[tooltipItem.dataIndex];
-                            return `${tooltipItem.label}: ${data}%`;
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-function generateBarChart(id, labels, data) {
-    return new Chart(document.getElementById(id).getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels: labels,
-            
-            datasets: [{
-                label: 'Inventory Value',
-                data: data,
-                backgroundColor: [
-                    '#fbb304',
-                    '#fbd204',
-                    '#fbdf04',
-                    '#fbef04',
-                    '#fbf404',
-                    '#fbfb04'
-                ],
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                yAxes: [{
-                    ticks: {
-                        beginAtZero: true,   // Ensures the y-axis starts at zero
-                        maxTicksLimit: 5,
-                    } 
-                }],
-                xAxes: [{
-                    gridLines: {
-                        display: false,
-                    }
-                }]
-            },
-            legend: {
-                display: false,
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(tooltipItem, data) {
-                            const value = tooltipItem.yLabel; // Display actual value
-                            return `${tooltipItem.label}: $${value}`;
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-function generateStackBarChart(id, labels, bottomData, topData) {
-    return new Chart(document.getElementById(id).getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Available Stock',
-                data: bottomData,
-                backgroundColor: [
-                    '#fbb304',
-                    '#fbd204',
-                    '#fbdf04',
-                    '#fbef04',
-                    '#fbf404',
-                    '#fbfb04'
-                ],
-                stack: 'stack1',  // Stack group 1
-            }, {
-                label: 'Sold Stock',
-                data: topData,
-                backgroundColor: [
-                    '#22c1c3',
-                    '#22c2cd',
-                    '#22c2d5',
-                    '#22c2e0',
-                    '#22c3ee',
-                    '#22c3fb'
-                ],
-                stack: 'stack1',  // Stack group 1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                xAxes: [{
-                    stacked: true,  // Enable stacking on x-axis
-                    gridLines: {
-                        display: false  // Removes horizontal gridlines
-                    }
-                }],
-                yAxes: [{
-                    stacked: true,  // Enable stacking on y-axis
-                    ticks: {
-                        beginAtZero: true,  // Ensures the y-axis starts at zero
-                        maxTicksLimit: 5,
-                    },
-                    
-                }]
-            },
-            legend: {
-                display: true   // Show the legend
-            }
-        }
-    });
-}
-
-function generateLineChart(id, labels, datasets) {
-    return new Chart(document.getElementById(id).getContext('2d'), {
-        type: 'line',
-        data: {
-            labels: labels,  // Time periods
-            datasets: datasets
-        },
-        options: {
-            responsive: true,
-            scales: {
-                xAxes: [{
-                    scaleLabel: {
-                        display: true,
-                        labelString: 'Days'
-                    },
-                    ticks: {
-                        autoSkip: true, // Enable auto-skipping
-                        maxTicksLimit: 10, // Limit the number of visible labels
-                    }
-                }],
-                yAxes: [{
-                    scaleLabel: {
-                        display: true,
-                        labelString: 'Stock Count'
-                    },
-                    ticks: {
-                        // beginAtZero: true  // Ensure y-axis starts at zero
-                    }
-                }]
-            },
-            legend: {
-                display: true  // Show the legend
-            }
-        }
-    });
-}
-
-
-
-
-
-
-
-
-
-
-
-
-// let dataTable = new simpleDatatables.DataTable(document.querySelector('#productTable'));
-
-
-
-// Filepond: ImgBB with server property
-// FilePond.create( document.querySelector('.imgbb-filepond'), { 
-//     allowImagePreview: false, 
-//     server: {
-//         process: (fieldName, file, metadata, load, error, progress, abort) => {
-//             // We ignore the metadata property and only send the file
-
-//             const formData = new FormData();
-//             formData.append(fieldName, file, file.name);
-
-//             const request = new XMLHttpRequest();
-//             // you can change it by your client api key
-//             request.open('POST', 'https://api.imgbb.com/1/upload?key=762894e2014f83c023b233b2f10395e2');
-
-//             request.upload.onprogress = (e) => {
-//                 progress(e.lengthComputable, e.loaded, e.total);
-//             };
-
-//             request.onload = function() {
-//                 if (request.status >= 200 && request.status < 300) {
-//                     load(request.responseText);
-//                 }
-//                 else {
-//                     error('oh no');
-//                 }
-//             };
-
-//             request.onreadystatechange = function() {
-//                 if (this.readyState == 4) {
-//                     if(this.status == 200) {
-//                         let response = JSON.parse(this.responseText);
-                        
-//                         Toastify({
-//                             text: "Success uploading to imgbb! see console f12",
-//                             duration: 3000,
-//                             close:true,
-//                             gravity:"bottom",
-//                             position: "right",
-//                             backgroundColor: "#4fbe87",
-//                         }).showToast();
-            
-//                         console.log(response);
-//                     } else {
-//                         Toastify({
-//                             text: "Failed uploading to imgbb! see console f12",
-//                             duration: 3000,
-//                             close:true,
-//                             gravity:"bottom",
-//                             position: "right",
-//                             backgroundColor: "#ff0000",
-//                         }).showToast();   
-
-//                         console.log("Error", this.statusText);
-//                     }
-//                 }
-//             };
-
-//             request.send(formData);
-//         }
-//     }
-// });
-
-
-FilePond.create(document.querySelector('.imgbb-filepond'), { 
-    allowImagePreview: false, 
-    server: {
-        process: (fieldName, file, metadata, load, error, progress, abort) => {
-            // Read the file locally using FileReader
-            const reader = new FileReader();
-
-            reader.onload = function(event) {
-                const fileContent = event.target.result;
-
-                // Use a library like XLSX to parse Excel content
-                const workbook = XLSX.read(fileContent, { type: 'binary' });
-                
-                // Example: Reading the first sheet
-                const pricesSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const salesSheet = workbook.Sheets[workbook.SheetNames[1]];
-                const inventorySheet = workbook.Sheets[workbook.SheetNames[2]];
-
-                // Convert sheets to JSON for easier processing
-                const salesData = XLSX.utils.sheet_to_json(salesSheet);
-                const pricesData = XLSX.utils.sheet_to_json(pricesSheet);
-                const inventoryData = XLSX.utils.sheet_to_json(inventorySheet);
-
-                // Process the data to convert the DATEcolumn
-                const processedSalesData = salesData.map(row => {
-                    if (row['DATE']) {
-                        // If the DATEis a serial number (check if it's a number)
-                        if (typeof row['DATE'] === 'number') {
-                            row['DATE'] = excelDateToJSDate(row['DATE']);
-                        } else if (typeof row['DATE'] === 'string' && !isNaN(Date.parse(row['DATE']))) {
-                            // If it's a string that can be parsed as a date, convert it
-                            row['DATE'] = new Date(row['DATE']);
-                        }
-                    }
-                    return row;
-                });
-
-                // Prepare the combined data array
-                const combinedData = [];
-
-                // Combine data by matching 'Product Name' and 'Product Category'
-                pricesData.forEach(priceRow => {
-                    const matchingInventoryRow = inventoryData.find(inventoryRow => 
-                        inventoryRow['Product Name'] === priceRow['Product Name']
-                        // inventoryRow['Product Category'] === priceRow['Product Category']
-                    );
-
-                    if (matchingInventoryRow) {
-                        combinedData.push({
-                            productName: priceRow['Product Name'], 
-                            productCategory: priceRow['Product Category'],
-                            purchasePrice: priceRow['Purchase Price'],
-                            sellingPrice: priceRow['Selling Price'],
-                            startingCount: matchingInventoryRow['Starting Count'],
-                            in: matchingInventoryRow['IN'],
-                            out: matchingInventoryRow['OUT'],
-                            remainingCount: matchingInventoryRow['Remaining Count'],
-                            variance: matchingInventoryRow['Variance']
-                        });
-                    }
-                });
-
-                // Output the JSON data
-                console.log('Combined Data as JSON:', combinedData);
-
-                localStorage.setItem('salesData', JSON.stringify(processedSalesData));
-                localStorage.setItem('combinedData', JSON.stringify(combinedData));
-
-                updateCharts();
-
-                // Show a success toast and log data
-                Toastify({
-                    text: "File successfully read!",
-                    duration: 3000,
-                    close: true,
-                    gravity: "bottom",
-                    position: "right",
-                    backgroundColor: "#4fbe87",
-                }).showToast();
-
-                console.log('Sales Data:', salesData);
-                load('File read successfully'); // Signal completion to FilePond
-                
-                calculateProductType();
-            };
-
-            reader.onerror = function() {
-                Toastify({
-                    text: "Error reading file!",
-                    duration: 3000,
-                    close: true,
-                    gravity: "bottom",
-                    position: "right",
-                    backgroundColor: "#ff0000",
-                }).showToast();
-
-                error('Failed to read file');
-            };
-
-            // Read the file as binary for XLSX
-            reader.readAsBinaryString(file);
-        }
-    }
-});
-
-function excelDateToJSDate(serial) {
-    const excelEpoch = new Date(1900, 0, 1); // Excel starts counting from Jan 1, 1900
-    const days = serial - 1; // Subtract 1 because Excel incorrectly includes Feb 29, 1900
-    return new Date(excelEpoch.getTime() + days * 86400000); // Convert to JS Date
 }
